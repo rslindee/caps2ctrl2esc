@@ -1,5 +1,3 @@
-// compile:
-//     gcc caps2esc.c -o caps2esc -I/usr/include/libevdev-1.0 -levdev -ludev
 // run:
 //     sudo nice -n -20 ./caps2esc >caps2esc.log 2>caps2esc.err &
 
