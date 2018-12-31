@@ -1,5 +1,5 @@
 // run:
-//     sudo nice -n -20 ./caps2esc >caps2esc.log 2>caps2esc.err &
+//     sudo nice -n -20 ./caps2ctrl2esc >caps2ctrl2esc.log 2>caps2ctrl2esc.err &
 
 #include <stdio.h>
 #include <errno.h>
@@ -36,8 +36,8 @@ int equal(const struct input_event *first, const struct input_event *second) {
            first->value == second->value;
 }
 
-int eventmap(const struct input_event *input, struct input_event output[]) {
-    static int capslock_is_down = 0, esc_give_up = 0;
+int eventmap(struct input_event *input, struct input_event output[]) {
+    static int ctrl_is_down = 0, esc_give_up = 0;
 
     if (input->type == EV_MSC && input->code == MSC_SCAN)
         return 0;
@@ -47,13 +47,15 @@ int eventmap(const struct input_event *input, struct input_event output[]) {
         return 1;
     }
 
-    if (capslock_is_down) {
-        if (equal(input, &capslock_down) || equal(input, &capslock_repeat) ||
-            input->code == KEY_LEFTCTRL) {
+    if (input->code == KEY_CAPSLOCK)
+        input->code = KEY_LEFTCTRL;
+
+    if (ctrl_is_down) {
+        if (equal(input, &ctrl_down) || equal(input, &ctrl_repeat)) {
             return 0;
         }
-        if (equal(input, &capslock_up)) {
-            capslock_is_down = 0;
+        if (equal(input, &ctrl_up)) {
+            ctrl_is_down = 0;
             if (esc_give_up) {
                 esc_give_up = 0;
                 output[0]   = ctrl_up;
@@ -73,21 +75,15 @@ int eventmap(const struct input_event *input, struct input_event output[]) {
 
         output[k++] = *input;
 
-        if (output[k - 1].code == KEY_ESC)
-            output[k - 1].code = KEY_CAPSLOCK;
-
         return k;
     }
 
-    if (equal(input, &capslock_down)) {
-        capslock_is_down = 1;
+    if (equal(input, &ctrl_down)) {
+        ctrl_is_down = 1;
         return 0;
     }
 
     output[0] = *input;
-
-    if (output[0].code == KEY_ESC)
-        output[0].code = KEY_CAPSLOCK;
 
     return 1;
 }
@@ -235,7 +231,7 @@ int main(int argc, const char *argv[]) {
     int initial_scan;
 
     if (argc > 2) {
-        fprintf(stderr, "usage: caps2esc [device-path]\n");
+        fprintf(stderr, "usage: caps2ctrl2esc [device-path]\n");
         return EXIT_FAILURE;
     }
 
